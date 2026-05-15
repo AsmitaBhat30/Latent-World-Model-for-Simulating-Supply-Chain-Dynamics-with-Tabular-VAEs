@@ -1,0 +1,83 @@
+# Default configuration for the Latent World Model project.
+seed: 0
+device: cuda    # falls back to cpu if cuda unavailable
+
+data:
+  dataset: dataco                 # one of {dataco, synthetic}
+  dataco_path: data/DataCoSupplyChainDataset.csv
+  synthetic:
+    n_skus: 16
+    n_warehouses: 3
+    episode_len: 64
+    n_episodes: 8000
+  batch_size: 256
+  val_frac: 0.1
+
+env:
+  action_type: continuous         # continuous reorder qty in [0,1] scaled
+  holding_cost: 0.5
+  stockout_cost: 4.0
+  lead_time_mean: 3
+  lead_time_std: 1
+  horizon: 32
+
+vae:
+  shared:
+    d_token: 64
+    n_attn_heads: 4
+    n_tf_blocks: 2
+    dropout: 0.1
+  hierarchical:
+    z_dims: [16, 16, 16]          # 3 latent groups, top-down
+    kl_balance: 0.8
+    free_bits: 1.0
+    warmup_steps: 5000
+  vqvae:
+    n_codes: 512
+    code_dim: 32
+    n_quantizers: 2               # residual VQ stages
+    commitment: 0.25
+    ema_decay: 0.99
+    dead_code_threshold: 0.01
+
+world_model:
+  rssm:
+    deterministic_dim: 256
+    stochastic_dim: 32
+    n_categoricals: 32            # used when vae=vqvae
+    hidden: 256
+  kl_balance: 0.8
+  free_bits: 1.0
+  reward_bins: 41
+  symlog: true
+
+agents:
+  dreamer:
+    horizon: 15
+    gamma: 0.997
+    lambda_: 0.95
+    actor_lr: 3.0e-5
+    critic_lr: 8.0e-5
+    entropy: 3.0e-4
+    target_update: 0.02
+  sac:
+    gamma: 0.99
+    tau: 5.0e-3
+    actor_lr: 3.0e-4
+    critic_lr: 3.0e-4
+    alpha_lr: 3.0e-4
+    target_entropy: -1.0
+  ppo:
+    gamma: 0.99
+    lambda_: 0.95
+    clip_eps: 0.2
+    entropy: 0.01
+    epochs: 8
+    minibatch: 64
+
+training:
+  vae_steps: 20000
+  world_model_steps: 30000
+  agent_steps: 50000
+  log_every: 200
+  eval_every: 2000
